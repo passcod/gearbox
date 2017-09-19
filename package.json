@@ -17,7 +17,10 @@
   ],
   "license": "UNLICENSED",
   "dependencies": {
-    "abraxas": "^2.1.10"
+    "abraxas": "^2.1.10",
+    "koa": "^2.3.0",
+    "koa-json": "^2.0.2",
+    "koa-route": "^3.2.0"
   },
   "devDependencies": {
     "standard": "^10.0.3",
