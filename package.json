@@ -1,0 +1,26 @@
+{
+  "name": "gearbox",
+  "version": "1.0.0",
+  "description": "Manager and pattern controller for Gearman",
+  "main": "index.js",
+  "scripts": {
+    "test": "tap 'test/**/!(_*).js'"
+  },
+  "keywords": [
+    "gearman",
+    "concurrency",
+    "patterns",
+    "job-server"
+  ],
+  "contributors": [
+    "Félix Saparelli <felix@passcod.name> (https://passcod.name)"
+  ],
+  "license": "UNLICENSED",
+  "dependencies": {
+    "abraxas": "^2.1.10"
+  },
+  "devDependencies": {
+    "standard": "^10.0.3",
+    "tap": "^10.7.2"
+  }
+}
