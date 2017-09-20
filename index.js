@@ -1,2 +1,2 @@
-require('./lib/boxes')
+require('./lib/box')
 require('./lib/control')

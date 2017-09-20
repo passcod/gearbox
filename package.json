@@ -22,7 +22,7 @@
     "koa-bodyparser": "^4.2.0",
     "koa-json": "^2.0.2",
     "koa-route": "^3.2.0",
-    "ssri": "^4.1.6"
+    "redis": "^2.8.0"
   },
   "devDependencies": {
     "standard": "^10.0.3",
