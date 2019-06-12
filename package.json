@@ -2,12 +2,21 @@
   "name": "gearbox",
   "version": "1.0.0",
   "description": "Manager and pattern controller for Gearman",
-  "main": "index.js",
   "scripts": {
+    "fmt": "semistandard --fix **/*.mjs",
+    "start": "bin/core",
+    "agent": "bin/agent",
+    "client": "bin/client",
     "test": "tap 'test/**/!(_*).js'"
+  },
+  "bin": {
+    "g-client": "bin/client",
+    "g-agent": "bin/agent",
+    "g-core": "bin/core"
   },
   "keywords": [
     "gearman",
+    "monitoring",
     "concurrency",
     "patterns",
     "job-server"
@@ -18,14 +27,10 @@
   "license": "UNLICENSED",
   "dependencies": {
     "abraxas": "^2.1.10",
-    "koa": "^2.3.0",
-    "koa-bodyparser": "^4.2.0",
-    "koa-json": "^2.0.2",
-    "koa-route": "^3.2.0",
-    "redis": "^2.8.0"
-  },
-  "devDependencies": {
-    "standard": "^10.0.3",
-    "tap": "^10.7.2"
+    "knex": "^0.17.5",
+    "ms": "^2.1.2",
+    "mysql2": "^1.6.5",
+    "semistandard": "^13.0.1",
+    "yargs": "^13.2.4"
   }
 }

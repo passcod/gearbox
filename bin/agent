@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+false && /*
+export NODE_NO_WARNINGS=1
+exec node --experimental-modules $0 $*
+esm=<<-"'EOF'"
+*/ true;
+import('../entry/agent.mjs');
+'EOF'
