@@ -2,6 +2,7 @@
   "name": "gearbox",
   "version": "1.0.0",
   "description": "Manager and pattern controller for Gearman",
+  "type": "module",
   "scripts": {
     "fmt": "semistandard --fix **/*.mjs",
     "start": "bin/core",
@@ -26,7 +27,9 @@
   ],
   "license": "UNLICENSED",
   "dependencies": {
-    "abraxas": "^2.1.10",
+    "abraxas": "git+ssh://git@github.com/passcod/abraxas.git",
+    "chrono-node": "^1.3.11",
+    "debug": "^4.1.1",
     "knex": "^0.17.5",
     "ms": "^2.1.2",
     "mysql2": "^1.6.5",

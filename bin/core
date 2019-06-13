@@ -1,8 +1,12 @@
-#!/usr/bin/env bash
-false && /*
-export NODE_NO_WARNINGS=1
-exec node --experimental-modules $0 $*
-esm=<<-"'EOF'"
-*/ true;
-import('../entry/core.mjs');
-'EOF'
+#!/usr/bin/env -S node --experimental-modules --no-warnings
+'use strict';
+import Core from '../lib/core.mjs';
+import gear from '../lib/gear.mjs';
+import sql from '../lib/sql.mjs';
+import { INSTANCE_ID } from '../lib/gear.mjs';
+import noop from '../lib/util/noop.mjs';
+
+console.log('INSTANCE_ID', INSTANCE_ID);
+noop(new Core(gear(), sql({ user: 'user', password: 'pass' })));
+
+// If you have a newer distro with a newer systemd (systemd version 236 or newer), you can set the values of StandardOutput or StandardError to file:YOUR_ABSPATH_FILENAME.

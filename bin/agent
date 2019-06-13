@@ -1,8 +1,11 @@
-#!/usr/bin/env bash
-false && /*
-export NODE_NO_WARNINGS=1
-exec node --experimental-modules $0 $*
-esm=<<-"'EOF'"
-*/ true;
-import('../entry/agent.mjs');
-'EOF'
+#!/usr/bin/env -S node --experimental-modules --no-warnings
+'use strict';
+// import Agent from '../lib/agent.mjs';
+import gear from '../lib/gear.mjs';
+import noop from '../lib/util/noop.mjs';
+
+// noop(new Agent(gear()));
+
+const g = gear();
+
+g.submitJob('multidemo', { uniqueid: 'uniq' }, 'hello').then(console.log).catch(console.error);

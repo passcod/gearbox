@@ -1,8 +1,122 @@
-#!/usr/bin/env bash
-false && /*
-export NODE_NO_WARNINGS=1
-exec node --experimental-modules $0 $*
-esm=<<-"'EOF'"
-*/ true;
-import('../entry/client.mjs');
-'EOF'
+#!/usr/bin/env -S node --experimental-modules --no-warnings
+'use strict';
+import { Gearman as Rpc, RpcError } from '../lib/rpc.mjs';
+import gear from '../lib/gear.mjs';
+import log from '../lib/util/log.mjs';
+import ms from 'ms';
+import noop from '../lib/util/noop.mjs';
+import yargs from 'yargs';
+import chrono from 'chrono-node';
+
+function baseRunArgs (yargs) {
+  return yargs
+    .positional('name', { describe: 'method name' })
+    .option('priority', { alias: 'P', describe: 'normal, high, low', default: 'normal' })
+    .option('disambiguator', { alias: 'D', describe: 'identifier that ensures no two jobs with the same one run at the same time' })
+    .option('after', { describe: 'schedule for after a certain time' })
+    .option('after-job', { describe: 'schedule for after a certain job (by id) has completed' })
+    .option('json', { alias: 'J', describe: 'always parse args as JSON', default: false, type: 'boolean' })
+    .demandOption(['name']);
+}
+
+function parseRunArgs (argv) {
+  let { name, priority, disambiguator, after: after_date, 'after-job': after_id } = argv;
+
+  name = name.replace('/', '\\');
+
+  if (after_date) {
+    after_date = chrono.parseDate(after_date).toJSON();
+  }
+
+  if (after_id) {
+    after_id = parseInt(after_id, 10);
+    if (after_id <= 0) after_id = null;
+  }
+
+  let args;
+  if (argv.json) {
+    if (argv.args.length === 1) {
+      args = JSON.parse(argv.args[0]);
+    } else {
+      args = argv.args.map(a => JSON.parse(a));
+    }
+  } else if (argv.args.some(a => a.toString().includes('='))) {
+    args = {};
+    for (const [k, v = null] of argv.args.map(a => a.split('=', 2))) { args[k] = v || args[k] || null; }
+  }
+
+  if (!args) args = argv.args;
+
+  return {
+    name,
+    priority,
+    args,
+    disambiguator,
+    after_date,
+    after_id,
+  };
+}
+
+async function run (argv) {
+  const start = new Date();
+  const rpc = new Rpc(gear());
+
+  if (argv.priority === 'normal') argv.priority = null;
+  const { name, args } = argv;
+  delete argv.name;
+  delete argv.args;
+
+  try {
+    const data = await rpc.request(name, args, argv);
+    return data;
+  } catch (err) {
+    log.err('<== Received an error');
+    if (err instanceof RpcError) {
+      const re = err.toJSON().error;
+      log.crit('code:', re.code);
+      log.crit('message:', re.message);
+      if (re.data) log.crit('data:', re.data);
+    } else {
+      log.crit(err);
+    }
+  } finally {
+    log.err('=== Took', ms((new Date()) - start));
+  }
+}
+
+function wrap (fn) {
+  return async (...args) => {
+    try {
+      await fn(...args);
+    } catch (err) {
+      log.crit(err);
+    }
+  };
+}
+
+noop(yargs
+  .strict()
+  .option('quiet', { alias: 'q', describe: 'output minimally', type: 'boolean' })
+  .command('queue <name> [args...]', 'Queue a job', yargs => {
+    baseRunArgs(yargs);
+  }, wrap(async argv => {
+    if (argv.quiet) log.quiet();
+    const args = parseRunArgs(argv);
+    log.err(`==> Queueing ${args.name} with ${args.priority || 'normal'} priority`);
+    log.err('==> Arguments:', args.args);
+    const jobid = await run({ name: 'gearbox\\core::queue', args });
+    log.werr('<== Job ID: ');
+    log.out(jobid);
+  }))
+  .command('raw <name> [args...]', 'Run an RPC job directly', yargs => {
+    baseRunArgs(yargs);
+  }, wrap(async argv => {
+    if (argv.quiet) log.quiet();
+    const args = parseRunArgs(argv);
+    log.err(`==> Running ${args.name} with ${args.priority || 'normal'} priority`);
+    log.err('==> Arguments:', args.args);
+    const result = await run(args);
+    if (result !== null) log.out(result);
+  }))
+  .demandCommand(1, 'Missing command')
+  .argv);
