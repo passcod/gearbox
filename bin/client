@@ -15,12 +15,22 @@ function baseRunArgs (yargs) {
     .option('disambiguator', { alias: 'D', describe: 'identifier that ensures no two jobs with the same one run at the same time' })
     .option('after', { describe: 'schedule for after a certain time' })
     .option('after-job', { describe: 'schedule for after a certain job (by id) has completed' })
+    .option('retries', { describe: 'retry a job N times before giving up', default: 0 })
+    .option('retry-delay', { describe: 'with --retries, the delay in seconds between retries', default: 1 })
     .option('json', { alias: 'J', describe: 'always parse args as JSON', default: false, type: 'boolean' })
     .demandOption(['name']);
 }
 
 function parseRunArgs (argv) {
-  let { name, priority, disambiguator, after: after_date, 'after-job': after_id } = argv;
+  let {
+    name,
+    priority,
+    disambiguator,
+    after: after_date,
+    'after-job': after_id,
+    retries: max_retries,
+    'retry-delay': retry_delay
+  } = argv;
 
   name = name.replace('/', '\\');
 
@@ -31,6 +41,16 @@ function parseRunArgs (argv) {
   if (after_id) {
     after_id = parseInt(after_id, 10);
     if (after_id <= 0) after_id = null;
+  }
+
+  if (max_retries !== 0) {
+    max_retries = parseInt(max_retries, 10);
+    if (max_retries < 0) max_retries = 0;
+  }
+
+  if (retry_delay !== 1) {
+    retry_delay = parseInt(retry_delay, 10);
+    if (retry_delay < 0) retry_delay = 0;
   }
 
   let args;
@@ -54,6 +74,8 @@ function parseRunArgs (argv) {
     disambiguator,
     after_date,
     after_id,
+    max_retries,
+    retry_delay,
   };
 }
 
