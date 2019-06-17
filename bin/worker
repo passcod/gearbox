@@ -3,10 +3,12 @@
 import { Gearman as Rpc, RpcError } from '../lib/rpc.mjs';
 import gear from '../lib/gear.mjs';
 import log from '../lib/util/log.mjs';
+import { worker as debug } from '../lib/util/debug.mjs';
 import ms from 'ms';
 import noop from '../lib/util/noop.mjs';
 import yargs from 'yargs';
 import chrono from 'chrono-node';
+import child from 'child_process';
 
 function wrap (fn) {
   return async (...args) => {
@@ -21,9 +23,8 @@ function wrap (fn) {
 const y = yargs
   .strict()
   .usage('Usage: $0 [options] <name/space::method> <command> [arguments...]')
-  .option('concurrency', { alias: 'j', describe: 'maximum jobs to run in parallel', type: 'number' })
-  .option('input-as-args', { alias: 'A', describe: 'parse input as extra arguments for the command', type: 'boolean' })
-  .option('json', { alias: 'J', describe: 'parse output as JSON', type: 'boolean' })
+  .option('job-args', { alias: 'A', describe: 'handle job args', choices: ['stdin', 'append', 'prepend', 'ignore'], default: 'stdin' })
+  .option('output', { alias: 'O', describe: 'handle command output', choices: ['string', 'buffer', 'json', 'nl-json'], default: 'string' })
   .option('quiet', { alias: 'q', describe: 'output minimally', type: 'boolean' });
 const argv = y.argv;
 
@@ -33,7 +34,6 @@ if (argv._.length < 2) {
 }
 
 if (argv.quiet) log.quiet();
-log.out(argv);
 
 const [nsm, command, ...args] = argv._;
 
@@ -50,20 +50,81 @@ const rpc = new Rpc(gear(), {
 
 log.info(`=== Waiting for jobs...`);
 
-function work (args, { meta: { gearbox_id: id } }) {
+function flatArgs (a) {
+  if (Array.isArray(a)) {
+    return a;
+  } else if (typeof a === 'object') {
+    return Object.entries(a).map(pair => pair.join('='));
+  } else {
+    return [`${a}`];
+  }
+}
+
+function work (jobArgs, { meta: { gearbox_id: id } }) {
   const start = new Date;
 
   try {
     log.info(`==> Starting job (${id})`);
-    log.out(args);
 
-    const data = '';
+    let finalArgs = [];
+    finalArgs.push(...args);
 
+    const opts = {};
+
+    switch (argv.jobArgs) {
+      case 'ignore':
+        break;
+
+      case 'stdin':
+        opts.input = JSON.stringify(jobArgs);
+        break;
+
+      case 'append':
+        finalArgs.push(...flatArgs(jobArgs));
+        break;
+
+      case 'prepend':
+        finalArgs = [];
+        finalArgs.push(...flatArgs(jobArgs));
+        finalArgs.push(...args);
+        break;
+    }
+
+    finalArgs = finalArgs.map(a => `${a}`);
+    debug(command, finalArgs);
+    let data = child.execFileSync(command, finalArgs, opts);
+    debug(data);
+
+    switch (argv.output) {
+      case 'buffer':
+        data = Buffer.from(data);
+        break;
+
+      case 'string':
+        data = Buffer.from(data).toString();
+        break;
+
+      case 'json':
+        data = JSON.parse(data);
+        break;
+
+      case 'nl-json':
+        data = data.split(/[\r\n]/).map(d => JSON.parse(d));
+        break;
+    }
+
+    debug(data);
     log.info(`<== Job ended successfully, sending output back`);
     setImmediate(() => rpc.notify('gearbox\\core::job_data', { id, data, status: 'complete' }));
   } catch (err) {
     let data;
-    if (err instanceof RpcError) {
+    if (err.stderr || err.stdout || err.status) {
+      data = {
+        stderr: err.stderr,
+        stdout: err.stdout,
+        status: err.status,
+      };
+    } else if (err instanceof RpcError) {
       data = err.toJSON().error;
     } else {
       data = err.stack || err.toString();
