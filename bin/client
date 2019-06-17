@@ -130,6 +130,18 @@ noop(yargs
     log.werr('<== Job ID: ');
     log.out(jobid);
   }))
+  .command('watch <id>', 'Watch a job', yargs => {
+    yargs
+      .positional('id')
+      // .option('timeout', { describe: 'stop watching after N seconds', type: 'number' })
+      .option('wait-for-id', { describe: 'don’t error if the id doesn’t exist yet', type: 'boolean' })
+      .demandOption('id');
+  }, wrap(async argv => {
+    if (argv.quiet) log.quiet();
+    const { id, waitForId } = argv;
+    log.err(`==> Watching job ${id}`);
+    log.out(await run({ name: 'gearbox\\core::watch', args: { id, waitForId } }));
+  }))
   .command('raw <name> [args...]', 'Run an RPC job directly', yargs => {
     baseRunArgs(yargs);
   }, wrap(async argv => {
