@@ -23,6 +23,7 @@ function wrap (fn) {
 const y = yargs
   .strict()
   .usage('Usage: $0 [options] <name/space::method> <command> [arguments...]')
+  .option('concurrency', { alias: 'j', describe: 'how many jobs can run at the same time', type: 'number', default: 1 })
   .option('job-args', { alias: 'A', describe: 'handle job args', choices: ['stdin', 'append', 'prepend', 'ignore'], default: 'stdin' })
   .option('output', { alias: 'O', describe: 'handle command output', choices: ['string', 'buffer', 'json', 'nl-json'], default: 'string' })
   .option('quiet', { alias: 'q', describe: 'output minimally', type: 'boolean' });
@@ -43,7 +44,9 @@ if (!method) {
   ns = '';
 }
 
-const rpc = new Rpc(gear(), {
+const rpc = new Rpc(gear({
+  maxJobs: argv.concurrency
+}), {
   ns: ns.split(/[\/\\]/),
   methods: { [method]: work }
 });
@@ -92,6 +95,7 @@ function work (jobArgs, { meta: { gearbox_id: id } }) {
 
     finalArgs = finalArgs.map(a => `${a}`);
     debug(command, finalArgs);
+    // TODO: use async so workers can work in parallel!
     let data = child.execFileSync(command, finalArgs, opts);
     debug(data);
 
@@ -133,6 +137,6 @@ function work (jobArgs, { meta: { gearbox_id: id } }) {
     log.info(`<== Job failed, sending error back`);
     setImmediate(() => rpc.notify('gearbox\\core::job_data', { id, data, status: 'errored' }));
   } finally {
-    log.err('=== Took', ms(new Date - start));
+    log.info('=== Took', ms(new Date - start));
   }
 }
