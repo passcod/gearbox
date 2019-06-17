@@ -24,7 +24,7 @@ const y = yargs
   .strict()
   .usage('Usage: $0 [options] <name/space::method> <command> [arguments...]')
   .option('concurrency', { alias: 'j', describe: 'how many jobs can run at the same time', type: 'number', default: 1 })
-  .option('job-args', { alias: 'A', describe: 'handle job args', choices: ['stdin', 'append', 'prepend', 'ignore'], default: 'stdin' })
+  .option('input', { alias: 'I', describe: 'handle job input', choices: ['stdin', 'append', 'prepend', 'ignore'], default: 'stdin' })
   .option('output', { alias: 'O', describe: 'handle command output', choices: ['string', 'buffer', 'json', 'nl-json'], default: 'string' })
   .option('quiet', { alias: 'q', describe: 'output minimally', type: 'boolean' });
 const argv = y.argv;
@@ -34,6 +34,7 @@ if (argv._.length < 2) {
   y.exit();
 }
 
+debug(argv);
 if (argv.quiet) log.quiet();
 
 const [nsm, command, ...args] = argv._;
@@ -74,7 +75,7 @@ function work (jobArgs, { meta: { gearbox_id: id } }) {
 
     const opts = {};
 
-    switch (argv.jobArgs) {
+    switch (argv.input) {
       case 'ignore':
         break;
 
@@ -95,6 +96,7 @@ function work (jobArgs, { meta: { gearbox_id: id } }) {
 
     finalArgs = finalArgs.map(a => `${a}`);
     debug(command, finalArgs);
+    log.info('  $', [command, ...finalArgs].join(' '));
     // TODO: use async so workers can work in parallel!
     let data = child.execFileSync(command, finalArgs, opts);
     debug(data);
