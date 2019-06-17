@@ -138,9 +138,9 @@ noop(yargs
       .demandOption('id');
   }, wrap(async argv => {
     if (argv.quiet) log.quiet();
-    const { id, waitForId } = argv;
+    const { id, waitForId: wait_for_id } = argv;
     log.err(`==> Watching job ${id}`);
-    log.out(await run({ name: 'gearbox\\core::watch', args: { id, waitForId } }));
+    log.out(await run({ name: 'gearbox\\core::watch', args: { id, wait_for_id } }));
   }))
   .command('raw <name> [args...]', 'Run an RPC job directly', yargs => {
     baseRunArgs(yargs);
