@@ -5,8 +5,9 @@ import gear from '../lib/gear.mjs';
 import sql from '../lib/sql.mjs';
 import { INSTANCE_ID } from '../lib/gear.mjs';
 import noop from '../lib/util/noop.mjs';
+import log from '../lib/util/log.mjs';
 
-console.log('INSTANCE_ID', INSTANCE_ID);
 noop(new Core(gear(), sql({ user: 'user', password: 'pass' })));
+log.info('=== INSTANCE_ID', INSTANCE_ID);
 
 // If you have a newer distro with a newer systemd (systemd version 236 or newer), you can set the values of StandardOutput or StandardError to file:YOUR_ABSPATH_FILENAME.

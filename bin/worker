@@ -1,0 +1,77 @@
+#!/usr/bin/env -S node --experimental-modules --no-warnings
+'use strict';
+import { Gearman as Rpc, RpcError } from '../lib/rpc.mjs';
+import gear from '../lib/gear.mjs';
+import log from '../lib/util/log.mjs';
+import ms from 'ms';
+import noop from '../lib/util/noop.mjs';
+import yargs from 'yargs';
+import chrono from 'chrono-node';
+
+function wrap (fn) {
+  return async (...args) => {
+    try {
+      await fn(...args);
+    } catch (err) {
+      log.crit(err);
+    }
+  };
+}
+
+const y = yargs
+  .strict()
+  .usage('Usage: $0 [options] <name/space::method> <command> [arguments...]')
+  .option('concurrency', { alias: 'j', describe: 'maximum jobs to run in parallel', type: 'number' })
+  .option('input-as-args', { alias: 'A', describe: 'parse input as extra arguments for the command', type: 'boolean' })
+  .option('json', { alias: 'J', describe: 'parse output as JSON', type: 'boolean' })
+  .option('quiet', { alias: 'q', describe: 'output minimally', type: 'boolean' });
+const argv = y.argv;
+
+if (argv._.length < 2) {
+  y.showHelp();
+  y.exit();
+}
+
+if (argv.quiet) log.quiet();
+log.out(argv);
+
+const [nsm, command, ...args] = argv._;
+
+let [ns, method] = nsm.split('::', 2);
+if (!method) {
+  method = ns;
+  ns = '';
+}
+
+const rpc = new Rpc(gear(), {
+  ns: ns.split(/[\/\\]/),
+  methods: { [method]: work }
+});
+
+log.info(`=== Waiting for jobs...`);
+
+function work (args, { meta: { gearbox_id: id } }) {
+  const start = new Date;
+
+  try {
+    log.info(`==> Starting job (${id})`);
+    log.out(args);
+
+    const data = '';
+
+    log.info(`<== Job ended successfully, sending output back`);
+    setImmediate(() => rpc.notify('gearbox\\core::job_data', { id, data, status: 'complete' }));
+  } catch (err) {
+    let data;
+    if (err instanceof RpcError) {
+      data = err.toJSON().error;
+    } else {
+      data = err.stack || err.toString();
+    }
+
+    log.info(`<== Job failed, sending error back`);
+    setImmediate(() => rpc.notify('gearbox\\core::job_data', { id, data, status: 'errored' }));
+  } finally {
+    log.err('=== Took', ms(new Date - start));
+  }
+}

@@ -102,7 +102,7 @@ async function run (argv) {
       log.crit(err);
     }
   } finally {
-    log.err('=== Took', ms((new Date()) - start));
+    log.err('=== Took', ms(new Date - start));
   }
 }
 

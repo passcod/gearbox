@@ -1,7 +1,7 @@
 {
   "name": "gearbox",
   "version": "1.0.0",
-  "description": "Manager and pattern controller for Gearman",
+  "description": "Manager and audit trailer for Gearman",
   "type": "module",
   "scripts": {
     "fmt": "semistandard --fix **/*.mjs",
@@ -12,14 +12,13 @@
   },
   "bin": {
     "g-client": "bin/client",
-    "g-agent": "bin/agent",
+    "g-worker": "bin/worker",
     "g-core": "bin/core"
   },
   "keywords": [
     "gearman",
     "monitoring",
     "concurrency",
-    "patterns",
     "job-server"
   ],
   "contributors": [
