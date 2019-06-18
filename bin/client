@@ -123,10 +123,12 @@ function wrap (fn) {
   };
 }
 
-function controlledOutput (output, result) {
-  if (result !== null) switch (output) {
+function controlledOutput (output, result, showNull = false) {
+  if (result === null && !showNull) return;
+
+  switch (output) {
     case 'inspect':
-      log.out(result);
+      log.out(result === null ? 'null' : result);
       break;
 
     case 'json':
@@ -165,9 +167,8 @@ noop(yargs
     log.out(jobid);
   }))
   .command('watch <id>', 'Watch a job', yargs => {
-    yargs
-      .positional('id')
-      // .option('timeout', { describe: 'stop watching after N seconds', type: 'number' })
+    outputOption(yargs)
+      // TODO: .option('timeout', { describe: 'stop watching after N seconds', type: 'number' })
       .option('wait-for-id', { describe: 'don’t error if the id doesn’t exist yet', type: 'boolean' })
       .demandOption('id');
   }, wrap(async argv => {
@@ -175,7 +176,7 @@ noop(yargs
     const { id, waitForId: wait_for_id } = argv;
     log.err(`==> Watching job ${id}`);
     const result = await run({ name: 'gearbox\\core::watch', args: { id, wait_for_id } });
-    controlledOutput(argv.output, result);
+    controlledOutput(argv.output, result, true);
   }))
   .command('raw <name> [args...]', 'Run an RPC job directly', yargs => {
     baseRunArgs(yargs);
@@ -185,7 +186,7 @@ noop(yargs
     log.err(`==> Running ${args.name} with ${args.priority || 'normal'} priority`);
     log.err('==> Arguments:', args.args);
     const result = await run(args);
-    controlledOutput(argv.output, result);
+    controlledOutput(argv.output, result, true);
   }))
   .command('status [id...]', 'Get the status of all current jobs, or of specific jobs', yargs => {
     outputOption(yargs);
