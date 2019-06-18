@@ -58,7 +58,8 @@ Watches a job until it either completes or fails, then returns its result.
 ### `gearbox\core::jobData`
 
 Updates a running job's data, status, or progress. To be used by workers,
-usually as an implementation detail of the worker abstraction.
+usually as an implementation detail of the worker abstraction (data returned
+via Gearman's `WORK_DATA` / JSON-RPC for scheduled jobs is ignored & discarded.)
 
 #### Params
 
