@@ -194,5 +194,14 @@ noop(yargs
     const result = await run({ name: 'gearbox\\core::status', args: argv.id || [] });
     controlledOutput(argv.output, result);
   }))
+  .command('stats <method>', 'Get current and historical stats for a method', yargs => {
+    outputOption(yargs);
+  }, wrap(async argv => {
+    if (argv.quiet) log.quiet();
+    const result = await run({ name: 'gearbox\\core::stats', args: {
+      method: argv.method,
+    } });
+    controlledOutput(argv.output, result);
+  }))
   .demandCommand(1, 'Missing command')
   .argv);

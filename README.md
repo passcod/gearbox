@@ -111,3 +111,23 @@ An array of status objects, like so:
   "data": null
 }]
 ```
+
+
+### `gearbox\core::stats`
+
+Returns current and historical stats about a particular method.
+
+#### Params
+
+ - **`method`** (_string_): Method. (required)
+
+#### Return
+
+ - **`totalRuns`** (_unsigned integer_): Total number of jobs ever run for this method.
+ - **`earliest`** (_iso8601 _string_): Earliest run of this method.
+ - **`latest`** (_iso8601 _string_): Latest run of this method.
+ - **`averageCompletionTime`** (_floating-point number_): In seconds.
+ - **`averageRetries`** (_floating-point number_).
+ - **`stdAverageCompletionTime`** (_floating-point number_): Averages normalised without outliers.
+ - **`stdAverageRetries`** (_floating-point number_): Averages normalised without outliers.
+ - **`states`** (_object_): Count of jobs in each status.
