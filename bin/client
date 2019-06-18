@@ -8,8 +8,13 @@ import noop from '../lib/util/noop.mjs';
 import yargs from 'yargs';
 import chrono from 'chrono-node';
 
-function baseRunArgs (yargs) {
+function outputOption (yargs) {
   return yargs
+    .option('output', { alias: 'O', describe: 'output handling', choices: ['inspect', 'json', 'nl-json', 'plain'], default: 'inspect' });
+}
+
+function baseRunArgs (yargs) {
+  return outputOption(yargs)
     .positional('name', { describe: 'method name' })
     .option('priority', { alias: 'P', describe: 'normal, high, low', default: 'normal' })
     .option('disambiguator', { alias: 'D', describe: 'identifier that ensures no two jobs with the same one run at the same time' })
@@ -18,7 +23,6 @@ function baseRunArgs (yargs) {
     .option('retries', { describe: 'retry a job N times before giving up', default: 0 })
     .option('retry-delay', { describe: 'with --retries, the delay in seconds between retries', default: 1 })
     .option('json', { alias: 'J', describe: 'always parse args as JSON', default: false, type: 'boolean' })
-    .option('output', { alias: 'O', describe: 'output handling', choices: ['inspect', 'json', 'nl-json', 'plain'], default: 'inspect' })
     .demandOption(['name']);
 }
 
@@ -181,6 +185,13 @@ noop(yargs
     log.err(`==> Running ${args.name} with ${args.priority || 'normal'} priority`);
     log.err('==> Arguments:', args.args);
     const result = await run(args);
+    controlledOutput(argv.output, result);
+  }))
+  .command('status [id...]', 'Get the status of all current jobs, or of specific jobs', yargs => {
+    outputOption(yargs);
+  }, wrap(async argv => {
+    if (argv.quiet) log.quiet();
+    const result = await run({ name: 'gearbox\\core::status', args: argv.id || [] });
     controlledOutput(argv.output, result);
   }))
   .demandCommand(1, 'Missing command')

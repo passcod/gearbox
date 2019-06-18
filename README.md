@@ -74,3 +74,40 @@ via Gearman's `WORK_DATA` / JSON-RPC for scheduled jobs is ignored & discarded.)
 #### Return
 
 Nothing. (Method should be called as a notification.)
+
+
+### `gearbox\core::status`
+
+Returns status information about jobs. By default returns the status of all
+current (running and scheduled) jobs.
+
+#### Params
+
+An _array_ of job ids (_unsigned integers_).
+
+#### Return
+
+An array of status objects, like so:
+
+```json
+[{
+  "id": 115,
+  "method_name": "sample::method",
+  "arguments": [
+    "a",
+    "b",
+    "c"
+  ],
+  "priority": "normal",
+  "created": "2019-06-18T02:25:18.000Z",
+  "updated": "2019-06-18T02:25:18.000Z",
+  "status": "running",
+  "after_date": null,
+  "after_id": null,
+  "completed": null,
+  "retries": false,
+  "disambiguator": "1984d092-5f6b-4e45-8672-bcc402df2fe4",
+  "progress": false,
+  "data": null
+}]
+```
