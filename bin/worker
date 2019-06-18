@@ -9,6 +9,9 @@ import noop from '../lib/util/noop.mjs';
 import yargs from 'yargs';
 import chrono from 'chrono-node';
 import child from 'child_process';
+import { promisify } from 'util';
+
+const execFile = promisify(child.execFile);
 
 function wrap (fn) {
   return async (...args) => {
@@ -64,7 +67,7 @@ function flatArgs (a) {
   }
 }
 
-function work (jobArgs, { meta: { gearbox_id: id } }) {
+async function work (jobArgs, { meta: { gearbox_id: id } }) {
   const start = new Date;
 
   try {
@@ -97,8 +100,7 @@ function work (jobArgs, { meta: { gearbox_id: id } }) {
     finalArgs = finalArgs.map(a => `${a}`);
     debug(command, finalArgs);
     log.info('  $', [command, ...finalArgs].join(' '));
-    // TODO: use async so workers can work in parallel!
-    let data = child.execFileSync(command, finalArgs, opts);
+    let data = await execFile(command, finalArgs, opts);
     debug(data);
 
     switch (argv.output) {
