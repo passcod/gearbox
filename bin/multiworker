@@ -1,0 +1,278 @@
+#!/usr/bin/env -S node --experimental-modules --no-warnings -r dotenv/config
+'use strict';
+import { Gearman as Rpc, RpcError } from '../lib/rpc.mjs';
+import gear, { INSTANCE_ID } from '../lib/gear.mjs';
+import log from '../lib/util/log.mjs';
+import { multiworker as debug } from '../lib/util/debug.mjs';
+import ms from 'ms';
+import yargs from 'yargs';
+import child from 'child_process';
+import { promisify } from 'util';
+import TOML from '@iarna/toml';
+import { promises as fs } from 'fs';
+
+const execFile = promisify(child.execFile);
+
+function wrap (fn) {
+  return async (...args) => {
+    try {
+      await fn(...args);
+    } catch (err) {
+      log.crit(err);
+    }
+  };
+}
+
+const DEFAULTS = {
+  input: 'stdin',
+  output: 'string',
+  concurrency: 1
+};
+
+async function loadConfig (files) {
+  const config = {};
+  const methods = new Map();
+
+  function addMethod (name, def, namespace) {
+    debug('parsing method', namespace, name, def);
+    const method = Object.assign({ namespace, name }, DEFAULTS, def);
+    const fullname = [method.namespace.join('\\'), method.name].join('::');
+
+    if (method.disabled) return;
+    if (method.concurrency < 1) {
+      log.err(`??? ${fullname} has concurrency < 1, assuming disabled=true`);
+      return;
+    }
+
+    method.input = method.input.toLowerCase();
+    method.output = method.output.toLowerCase();
+    if (!['stdin', 'append', 'prepend', 'ignore'].includes(method.input)) {
+      log.err(`??? ${fullname} has invalid input setting:`, method.input);
+      method.input = DEFAULTS.input;
+    }
+    if (!['string', 'buffer', 'json', 'nl-json', 'ignore'].includes(method.output)) {
+      log.err(`??? ${fullname} has invalid output setting:`, method.output);
+      method.output = DEFAULTS.output;
+    }
+
+    if (Array.isArray(def.command)) {
+      def.runner = 'command';
+    } else if (typeof def.command === 'string') {
+      def.runner = 'shell';
+
+      if (def.input === 'prepend') {
+        log.crit(`??? ${fullname} has invalid input setting: prepend is not supported with string command`);
+        return;
+      }
+    } else {
+      log.crit(`??? ${fullname} has invalid command syntax`);
+      return;
+    }
+
+    debug('adding method', fullname, method);
+    methods.set(fullname, method);
+  }
+
+  function traverse (tree, key = null, ns = []) {
+    if (key && tree.command) {
+      addMethod(key, tree, ns);
+    } else {
+      const newns = key ? ns.concat([key]) : ns;
+      for (const [subkey, subtree] of Object.entries(tree)) {
+        if (typeof subtree !== 'object') continue;
+        traverse(subtree, subkey, newns);
+      }
+    }
+  }
+
+  for (const file of files) {
+    debug('loading', file);
+    const contents = await fs.readFile(file);
+    const obj = TOML.parse(contents);
+
+    Object.assign(config, obj.config || {});
+    delete obj.config;
+
+    traverse(obj);
+  }
+
+  return { config, methods };
+}
+
+function flatArgs (a) {
+  if (Array.isArray(a)) {
+    return a;
+  } else if (typeof a === 'object') {
+    return Object.entries(a).map(pair => pair.join('='));
+  } else {
+    return [`${a}`];
+  }
+}
+
+const RUN = {
+  async command (def, jobArgs) {
+    const [command, ...args] = def.command;
+
+    let finalArgs = [];
+    finalArgs.push(...args);
+
+    const opts = {};
+
+    switch (def.input) {
+      case 'stdin':
+        opts.input = JSON.stringify(jobArgs);
+        break;
+
+      case 'append':
+        finalArgs.push(...flatArgs(jobArgs));
+        break;
+
+      case 'prepend':
+        finalArgs = [];
+        finalArgs.push(...flatArgs(jobArgs));
+        finalArgs.push(...args);
+        break;
+    }
+
+    finalArgs = finalArgs.map(a => `${a}`);
+    debug(command, finalArgs);
+    log.info('  $', [command, ...finalArgs].join(' '));
+    const { stdout: data } = await execFile(command, finalArgs, opts);
+    return data;
+  },
+  async shell (def, jobArgs) {
+    const opts = {};
+    let finalCmd = def.command;
+
+    switch (def.input) {
+      case 'stdin':
+        opts.input = JSON.stringify(jobArgs);
+        break;
+
+      case 'append':
+        finalCmd += flatArgs(jobArgs).join(' ');
+        break;
+    }
+
+    debug(finalCmd);
+    log.info('  $', finalCmd);
+    const { stdout: data } = await execFile(finalCmd, opts);
+    return data;
+  }
+};
+
+async function work (rpc, method, def, jobArgs, { meta: { gearbox_id: id } }) {
+  const start = new Date();
+
+  try {
+    log.info(`==> Starting ${method} job (${id})`);
+    let data = await RUN[def.runner](def, jobArgs);
+    debug(data);
+
+    switch (def.output) {
+      case 'ignore':
+        data = null;
+        break;
+
+      case 'buffer':
+        data = Buffer.from(data);
+        break;
+
+      case 'string':
+        data = Buffer.from(data).toString();
+        break;
+
+      case 'json':
+        data = JSON.parse(data);
+        break;
+
+      case 'nl-json':
+        data = data.split(/[\r\n]/).map(d => JSON.parse(d));
+        break;
+    }
+
+    debug(data);
+    log.info(`<== Job ended successfully, sending output back`);
+    setImmediate(() => rpc.notify('gearbox\\core::job_data', { id, data, status: 'complete' }));
+  } catch (err) {
+    let data;
+    if (err.stderr || err.stdout || err.status) {
+      data = {
+        stderr: err.stderr,
+        stdout: err.stdout,
+        status: err.status
+      };
+    } else if (err instanceof RpcError) {
+      data = err.toJSON().error;
+    } else {
+      data = err.stack || err.toString();
+    }
+
+    log.info(`<== Job failed, sending error back`);
+    setImmediate(() => rpc.notify('gearbox\\core::job_data', { id, data, status: 'errored' }));
+  } finally {
+    log.info('=== Took', ms(new Date() - start));
+  }
+}
+
+const y = yargs
+  .strict()
+  .usage('Usage: $0 <configfile>...')
+  .option('quiet', { alias: 'q', describe: 'output minimally', type: 'boolean' });
+const argv = y.argv;
+
+if (argv._.length < 1) {
+  y.showHelp();
+  y.exit();
+}
+
+debug(argv);
+if (argv.quiet) log.quiet();
+
+wrap(async () => {
+  const rpcs = new Map();
+  let mainRpc;
+
+  async function reload (first = false) {
+    if (!first) {
+      log.err('=== Shutting down existing workers');
+      const stops = [];
+      for (const rpc of rpcs.values()) stops.push(rpc.shutdown());
+      await Promise.all(stops);
+      rpcs.clear();
+    }
+
+    log.err(`=== ${first ? 'L' : 'Rel'}oading configuration`);
+    const { config, methods } = await loadConfig(argv._);
+
+    if (first && config.reload_worker) {
+      mainRpc = new Rpc(gear(), {
+        ns: ['gearbox', 'reloadmw'],
+        methods: {
+          [INSTANCE_ID]: () => { reload().catch(log.crit); }
+        }
+      });
+    }
+
+    if (!mainRpc) mainRpc = new Rpc(gear());
+
+    for (const [method, def] of methods.entries()) {
+      const rpc = new Rpc(gear({ maxJobs: def.concurrency }), {
+        ns: def.namespace,
+        methods: {
+          [def.name]: (args, meta) => work(mainRpc, method, def, args, meta)
+        }
+      });
+
+      rpcs.set(method, rpc);
+    }
+  }
+
+  await reload(true);
+  log.info(`=== Waiting for jobs...`);
+
+  process.on('USR1', () => {
+    log.out('=== Received USR1, reloading');
+    reload().catch(log.crit);
+  });
+})();
