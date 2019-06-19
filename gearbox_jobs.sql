@@ -21,6 +21,7 @@ CREATE TABLE `gearbox_jobs` (
   PRIMARY KEY (`id`),
   KEY `status` (`status`),
   KEY `created` (`created`),
+  KEY `disambiguator` (`disambiguator`),
   KEY `fk_gearbox_jobs_after_id_idx` (`after_id`),
   CONSTRAINT `fk_gearbox_jobs_after_id` FOREIGN KEY (`after_id`) REFERENCES `gearbox_jobs` (`id`) ON DELETE SET NULL ON UPDATE CASCADE
 ) DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
