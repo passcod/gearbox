@@ -16,7 +16,7 @@ const y = yargs
   .usage('Usage: $0 [options] <name/space::method> <command> [arguments...]')
   .option('concurrency', { alias: 'j', describe: 'how many jobs can run at the same time', type: 'number', default: 1 })
   .option('input', { alias: 'I', describe: 'handle job input', choices: ['stdin', 'append', 'prepend', 'ignore'], default: 'stdin' })
-  .option('output', { alias: 'O', describe: 'handle command output', choices: ['string', 'buffer', 'json', 'nl-json'], default: 'string' })
+  .option('output', { alias: 'O', describe: 'handle command output', choices: ['string', 'buffer', 'json', 'nl-json', 'ignore'], default: 'string' })
   .option('quiet', { alias: 'q', describe: 'output minimally', type: 'boolean' });
 const argv = y.argv;
 
@@ -92,6 +92,10 @@ async function work (jobArgs, { meta: { gearbox_id: id } }) {
     debug(data);
 
     switch (argv.output) {
+      case 'ignore':
+        data = null;
+        break;
+
       case 'buffer':
         data = Buffer.from(data);
         break;
