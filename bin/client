@@ -8,6 +8,8 @@ import noop from '../lib/util/noop.mjs';
 import yargs from 'yargs';
 import chrono from 'chrono-node';
 
+/* eslint camelcase: 0 */
+
 function outputOption (yargs) {
   return yargs
     .option('output', { alias: 'O', describe: 'output handling', choices: ['inspect', 'json', 'nl-json', 'plain'], default: 'inspect' });
@@ -80,7 +82,7 @@ function parseRunArgs (argv) {
     after_date,
     after_id,
     max_retries,
-    retry_delay,
+    retry_delay
   };
 }
 
@@ -107,7 +109,7 @@ async function run (argv) {
       log.crit(err);
     }
   } finally {
-    log.err('=== Took', ms(new Date - start));
+    log.err('=== Took', ms(new Date() - start));
   }
 
   process.exit(1);
@@ -136,18 +138,13 @@ function controlledOutput (output, result, showNull = false) {
       break;
 
     case 'nl-json':
-      if (Array.isArray(result))
-        for (const line of result)
-          log.out(JSON.stringify(line));
-      else
-        log.out(JSON.stringify(result));
+      if (Array.isArray(result)) {
+        for (const line of result) { log.out(JSON.stringify(line)); }
+      } else { log.out(JSON.stringify(result)); }
       break;
 
     case 'plain':
-      if (Array.isArray(result) || typeof result === 'object')
-        log.out(JSON.stringify(result));
-      else
-        log.out(`${result}`);
+      if (Array.isArray(result) || typeof result === 'object') { log.out(JSON.stringify(result)); } else { log.out(`${result}`); }
       break;
   }
 }
@@ -211,9 +208,10 @@ noop(yargs
     outputOption(yargs);
   }, wrap(async argv => {
     if (argv.quiet) log.quiet();
-    const result = await run({ name: 'gearbox\\core::stats', args: {
-      method: argv.method,
-    } });
+    const result = await run({ name: 'gearbox\\core::stats',
+      args: {
+        method: argv.method
+      } });
     controlledOutput(argv.output, result);
   }))
   .demandCommand(1, 'Missing command')

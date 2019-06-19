@@ -5,23 +5,11 @@ import gear from '../lib/gear.mjs';
 import log from '../lib/util/log.mjs';
 import { worker as debug } from '../lib/util/debug.mjs';
 import ms from 'ms';
-import noop from '../lib/util/noop.mjs';
 import yargs from 'yargs';
-import chrono from 'chrono-node';
 import child from 'child_process';
 import { promisify } from 'util';
 
 const execFile = promisify(child.execFile);
-
-function wrap (fn) {
-  return async (...args) => {
-    try {
-      await fn(...args);
-    } catch (err) {
-      log.crit(err);
-    }
-  };
-}
 
 const y = yargs
   .strict()
@@ -51,7 +39,7 @@ if (!method) {
 const rpc = new Rpc(gear({
   maxJobs: argv.concurrency
 }), {
-  ns: ns.split(/[\/\\]/),
+  ns: ns.split(/[/\\]/),
   methods: { [method]: work }
 });
 
@@ -68,7 +56,7 @@ function flatArgs (a) {
 }
 
 async function work (jobArgs, { meta: { gearbox_id: id } }) {
-  const start = new Date;
+  const start = new Date();
 
   try {
     log.info(`==> Starting job (${id})`);
@@ -130,7 +118,7 @@ async function work (jobArgs, { meta: { gearbox_id: id } }) {
       data = {
         stderr: err.stderr,
         stdout: err.stdout,
-        status: err.status,
+        status: err.status
       };
     } else if (err instanceof RpcError) {
       data = err.toJSON().error;
@@ -141,6 +129,6 @@ async function work (jobArgs, { meta: { gearbox_id: id } }) {
     log.info(`<== Job failed, sending error back`);
     setImmediate(() => rpc.notify('gearbox\\core::job_data', { id, data, status: 'errored' }));
   } finally {
-    log.info('=== Took', ms(new Date - start));
+    log.info('=== Took', ms(new Date() - start));
   }
 }

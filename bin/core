@@ -1,9 +1,8 @@
 #!/usr/bin/env -S node --experimental-modules --no-warnings -r dotenv/config
 'use strict';
 import Core from '../lib/core.mjs';
-import gear from '../lib/gear.mjs';
+import gear, { INSTANCE_ID } from '../lib/gear.mjs';
 import sql from '../lib/sql.mjs';
-import { INSTANCE_ID } from '../lib/gear.mjs';
 import noop from '../lib/util/noop.mjs';
 import log from '../lib/util/log.mjs';
 

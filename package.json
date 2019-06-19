@@ -4,11 +4,7 @@
   "description": "Manager and audit trailer for Gearman",
   "type": "module",
   "scripts": {
-    "fmt": "semistandard --fix **/*.mjs",
-    "start": "bin/core",
-    "agent": "bin/agent",
-    "client": "bin/client",
-    "test": "tap 'test/**/!(_*).js'"
+    "fmt": "semistandard --fix **/*.mjs bin/*"
   },
   "bin": {
     "g-client": "bin/client",
