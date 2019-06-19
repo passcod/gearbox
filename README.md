@@ -1,6 +1,166 @@
 # Gearbox
 
-...
+## Tools
+
+All tools log to the console, and also have [a debug facility][debug]. Generally
+debugging can be enabled by running with the `DEBUG=gearbox:*` env variable, and
+SQL queries can be shown with `DEBUG=knex:query`.
+
+While methods formally follow the `name\space::method` format, in command-line
+arguments they can be written with forward slashes instead (`name/space::method`)
+for ease of use and to avoid escaping.
+
+Coming from Gearman, the `disambiguator` of a job is like the `uniqueid`, except
+that in the case of scheduled or dependent jobs, two jobs with the same
+disambiguator can be input so long as they're not scheduled to run immediately,
+and if one job later becomes schedulable while another with the same
+disambiguator is current running, the former is marked as a duplicate of the
+latter, and `watch` queries are redirected transparently.
+
+[debug]: https://www.npmjs.com/package/debug
+
+### g-core
+
+The Gearbox daemon. Connects to MySQL, connects to Gearman, and manages the lot.
+
+Takes no options, instead is controlled via the environment:
+
+ - MySQL connection:
+   + `MYSQL_HOSTNAME`
+   + `MYSQL_DATABASE`
+   + `MYSQL_USER`
+   + `MYSQL_PASSWORD`
+ - Gearman connection (also used by other tools below):
+   + `GEARMAN_SERVER`
+
+
+### g-client
+
+A full command-line client to the gearbox interface. You can:
+
+ - **`queue`** jobs, which displays a job ID and returns immediately;
+ - **`watch`** jobs, which waits for a job given its ID and prints its output;
+ - **`run`** jobs, which does both of the above in one convenient command;
+ - issue **`raw`** gearbox RPC calls, for advanced use or debugging;
+ - get the **`status`** of all current jobs or of specific job IDs;
+ - get some **`stats`** about a method, including average run times and current use.
+
+When passing arguments for jobs:
+
+ - `a b c` is interpreted as `["a", "b", "c"]`;
+ - `a=b c=d` is interpreted as `{"a": "b", "c": "d"}`;
+ - `a=b c` is interpreted as `{"a": "b", "c": null}`;
+ - `1 2 3` is interpreted as `["1", "2", "3"]`;
+ - `1 2 3` with `-J` is interpreted as `[1, 2, 3]`;
+ - `a=true c` with `-J` is interpreted as `{"a": true, "c": null}`;
+ - `'{"a":[123,true]}'` with `-J` is interpreted as `{"a":[123,true]}`;
+ - `'{"a":[123,true]}'` without `-J` is interpreted as `"{"a":[123,true]}"`.
+
+
+### g-worker
+
+Operates a single gearbox method based on command-line arguments.
+
+```
+Usage: worker [options] <name/space::method> <command> [arguments...]
+
+Options:
+  --help             Show help                                         [boolean]
+  --version          Show version number                               [boolean]
+  --concurrency, -j  how many jobs can run at the same time.
+                                                           [number] [default: 1]
+  --input, -I        handle job input
+            [choices: "stdin", "append", "prepend", "ignore"] [default: "stdin"]
+  --output, -O       handle command output
+  [choices: "string", "buffer", "json", "nl-json", "ignore"] [default: "string"]
+  --quiet, -q        output minimally                                  [boolean]
+```
+
+See the multiworker option description below for details.
+
+
+### g-multiworker
+
+Reads one or more configuration files and sets up methods and workers as
+described. Supports reloading the config via signal and gearman job.
+
+```bash
+$ g-multiworker /path/to/config.toml
+```
+
+Here's a sample config file:
+
+```toml
+[config]
+reload_worker = true
+
+[Test.sleep]
+command = "sleep"
+input = "append"
+output = "ignore"
+concurrency = 4
+
+[Test.Foo.echo]
+command = "echo test"
+input = "append"
+concurrency = 10
+
+[Php.eval]
+command = ['php', '-R', '$expr = implode(" ", json_decode($argn)); echo json_encode(eval("return $expr;"))."\n";']
+output = "nl-json"
+concurrency = 1
+```
+
+This defines three methods:
+
+ - `Test::sleep` runs `sleep` in a shell (`command` is a string) with any
+   arguments the job brings as inputs appended to the command string. It
+   discards (`ignore`) any output from the command, and up to 4 jobs run
+   at the same time.
+
+ - `Test\Foo::echo` runs `echo test` in a shell with job inputs appended
+   to the command. It interprets the output of the command as a string and
+   can run up to 10 jobs at once.
+
+ - `Php::eval` runs `php -R ...` as a direct program call (which is safer)
+   with job input passed to the program on STDIN. It interprets the output
+   of the command as newline-separated JSON and can only run one at a time.
+
+#### Global options
+
+ - **`reload_worker`** (_boolean_): Installs a method called `gearbox\reloadmw::UUID`
+   where `UUID` is the instance ID (randomised at tool start) which reloads the
+   configuration files and updates the workers when called.
+
+#### Method options
+
+ - **`command`**: What the method runs for each job. (Required.)
+   There are several forms:
+   + (_string_) Runs the command within a shell (usually `/bin/sh`).
+     `input=prepend` is not available in this form.
+   + (_array of strings_) Runs the command directly, where the first string is
+     the program, and any others are arguments.
+ - **`input`** (_string_): How job inputs are handled. Defaults to `stdin`:
+   + `stdin`: Writes the inputs as JSON to STDIN I/O.
+   + `append`: Transforms the inputs to strings\* and appends them to the arguments.
+   + `prepend`: Transforms the inputs to strings\* and prepends them to the arguments.
+   + `ignore`: Discards any inputs.
+ - **`output`** (_string_): How job output is handled. Defaults to `string`:
+   + `string`: Sent back as a string.
+   + `buffer`: Sent back as a byte array, of the form `{"type":"Buffer","data":[byte,byte,byte]}`
+     where bytes are integers. This is more appropriate than `string` for binary data.
+   + `json`: Parsed as JSON (_will throw if malformed!_) and sent back as such.
+   + `nl-json`: Each line is parsed as JSON (_will throw!_) and collected in an array.
+   + `ignore`: Discarded.
+ - **`concurrency`** (_unsigned integer_): How many jobs can run in parallel in
+   this multiworker instance. (NB. this doesn't control how many jobs can run
+   across the entire gearman cluster, nor even for other multiworkers.) If this
+   is zero or less, will disable the method.
+ - **`disabled`** (_boolean_): If true, the method is ignored.
+
+TOML parsing errors will crash the multiworker, schema errors will only skip the
+relevant method definition.
+
 
 ## Protocol
 
@@ -124,8 +284,8 @@ Returns current and historical stats about a particular method.
 #### Return
 
  - **`totalRuns`** (_unsigned integer_): Total number of jobs ever run for this method.
- - **`earliest`** (_iso8601 _string_): Earliest run of this method.
- - **`latest`** (_iso8601 _string_): Latest run of this method.
+ - **`earliest`** (_iso8601 string_): Earliest run of this method.
+ - **`latest`** (_iso8601 string_): Latest run of this method.
  - **`averageCompletionTime`** (_floating-point number_): In seconds.
  - **`averageRetries`** (_floating-point number_).
  - **`stdAverageCompletionTime`** (_floating-point number_): Averages normalised without outliers.
