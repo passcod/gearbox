@@ -100,7 +100,7 @@ async function work (jobArgs, { meta: { gearbox_id: id } }) {
     finalArgs = finalArgs.map(a => `${a}`);
     debug(command, finalArgs);
     log.info('  $', [command, ...finalArgs].join(' '));
-    let data = await execFile(command, finalArgs, opts);
+    let { stdout: data } = await execFile(command, finalArgs, opts);
     debug(data);
 
     switch (argv.output) {
