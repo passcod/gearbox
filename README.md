@@ -55,6 +55,26 @@ A full command-line client to the gearbox interface. You can:
  - get the **`status`** of all current jobs or of specific job IDs;
  - get some **`stats`** about a method, including average run times and current use.
 
+You can watch jobs several times! That is, you can:
+
+```bash
+# Queue a job...
+$ g-client queue a::job
+...
+==> Job ID: 208
+
+# Watch it...
+$ g-client watch 208
+
+# In another terminal, on another machine, watch it also:
+$ g-client watch 208
+
+# ^ both of these will return and print the job's output when the job ends.
+```
+
+You can also "watch" a completed (or errored) job after the fact, which will
+return immediately and print the job's output.
+
 When passing arguments for jobs:
 
  - `a b c` is interpreted as `["a", "b", "c"]`;
