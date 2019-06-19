@@ -155,6 +155,18 @@ function controlledOutput (output, result, showNull = false) {
 noop(yargs
   .strict()
   .option('quiet', { alias: 'q', describe: 'output minimally', type: 'boolean' })
+  .command('run <name> [args...]', 'Run (queue+watch) a job', yargs => {
+    baseRunArgs(yargs);
+  }, wrap(async argv => {
+    if (argv.quiet) log.quiet();
+    const args = parseRunArgs(argv);
+    log.err(`==> Queueing ${args.name} with ${args.priority || 'normal'} priority`);
+    log.err('==> Arguments:', args.args);
+    const jobid = await run({ name: 'gearbox\\core::queue', args });
+    log.err(`==> Watching job ${jobid}`);
+    const result = await run({ name: 'gearbox\\core::watch', args: { id: jobid } });
+    controlledOutput(argv.output, result, true);
+  }))
   .command('queue <name> [args...]', 'Queue a job', yargs => {
     baseRunArgs(yargs);
   }, wrap(async argv => {
