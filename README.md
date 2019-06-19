@@ -1,5 +1,15 @@
 # Gearbox
 
+Running an intermediary daemon and an advanced job protocol on top of [Gearman]
+and a (My)SQL table, Gearbox provides job scheduling, job dependency, retries,
+the possibility of advanced analytics and a complete monitoring and audit trail
+for your job system.
+
+The protocol is fairly simple to implement, and there is a full suite of
+ready-made command-line tools to hit the ground running.
+
+[Gearman]: http://gearman.org/
+
 ## Tools
 
 All tools log to the console, and also have [a debug facility][debug]. Generally
@@ -81,8 +91,10 @@ See the multiworker option description below for details.
 
 ### g-multiworker
 
-Reads one or more configuration files and sets up methods and workers as
-described. Supports reloading the config via signal and gearman job.
+Reads one or more [TOML] configuration files and sets up methods and workers
+as described. Supports reloading the config via signal and gearman job.
+
+[TOML]: https://github.com/toml-lang/toml#objectives
 
 ```bash
 $ g-multiworker /path/to/config.toml
@@ -164,9 +176,11 @@ relevant method definition.
 
 ## Protocol
 
-The gearbox protocol layers JSON-RPC over Gearman jobs. All data, whether calls
+The gearbox protocol layers [JSON-RPC] over Gearman jobs. All data, whether calls
 result in success or error, is returned via `WORK_DATA` and underlying gearman
 tasks are marked as `WORK_COMPLETE`, unless a hard error occurs.
+
+[JSON-RPC]: https://www.jsonrpc.org/specification
 
 ### `gearbox\core::queue`
 
