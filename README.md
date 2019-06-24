@@ -103,6 +103,9 @@ Options:
             [choices: "stdin", "append", "prepend", "ignore"] [default: "stdin"]
   --output, -O       handle command output
   [choices: "string", "buffer", "json", "nl-json", "ignore"] [default: "string"]
+  --log              log every run to a file                            [string]
+  --log-output       also write the output of each job to the log      [boolean]
+  --log-no-time      don’t prepend timestamps to log lines             [boolean]
   --quiet, -q        output minimally                                  [boolean]
 ```
 

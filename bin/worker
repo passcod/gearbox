@@ -4,11 +4,12 @@ import { Gearman as Rpc, RpcError } from '../lib/rpc.mjs';
 import gear from '../lib/gear.mjs';
 import log from '../lib/util/log.mjs';
 import { worker as debug } from '../lib/util/debug.mjs';
+import { logtime, now } from '../lib/util/time.mjs';
 import ms from 'ms';
 import yargs from 'yargs';
 import child from 'child_process';
 import { promisify } from 'util';
-
+import { promises as fs } from 'fs';
 const execFile = promisify(child.execFile);
 
 const y = yargs
@@ -17,6 +18,9 @@ const y = yargs
   .option('concurrency', { alias: 'j', describe: 'how many jobs can run at the same time', type: 'number', default: 1 })
   .option('input', { alias: 'I', describe: 'handle job input', choices: ['stdin', 'append', 'prepend', 'ignore'], default: 'stdin' })
   .option('output', { alias: 'O', describe: 'handle command output', choices: ['string', 'buffer', 'json', 'nl-json', 'ignore'], default: 'string' })
+  .option('log', { describe: 'log every run to a file', type: 'string' })
+  .option('log-output', { describe: 'also write the output of each job to the log', type: 'boolean' })
+  .option('log-no-time', { describe: 'don’t prepend timestamps to log lines', type: 'boolean' })
   .option('quiet', { alias: 'q', describe: 'output minimally', type: 'boolean' });
 const argv = y.argv;
 
@@ -56,10 +60,22 @@ function flatArgs (a) {
 }
 
 async function work (jobArgs, { meta: { gearbox_id: id } }) {
-  const start = new Date();
+  const start = now();
+
+  function info (...args) {
+    log.info(...args);
+
+    if (!argv.logNoTime) {
+      args.unshift(logtime(start));
+    }
+
+    if (argv.log) {
+      fs.appendFile(argv.log, args.map(a => `${a}`).join(' ') + '\n').catch(log.crit);
+    }
+  }
 
   try {
-    log.info(`==> Starting job (${id})`);
+    info(`==> Starting job (${id})`);
 
     let finalArgs = [];
     finalArgs.push(...args);
@@ -87,9 +103,14 @@ async function work (jobArgs, { meta: { gearbox_id: id } }) {
 
     finalArgs = finalArgs.map(a => `${a}`);
     debug(command, finalArgs);
-    log.info('  $', [command, ...finalArgs].join(' '));
+    info('  $', [command, ...finalArgs].join(' '));
     let { stdout: data } = await execFile(command, finalArgs, opts);
     debug(data);
+
+    if (argv.log && argv.logOutput) {
+      const time = argv.logNoTime ? '' : (logtime(start) + ' ');
+      fs.appendFile(argv.log, time + data + '\n').catch(log.crit);
+    }
 
     switch (argv.output) {
       case 'ignore':
@@ -114,7 +135,7 @@ async function work (jobArgs, { meta: { gearbox_id: id } }) {
     }
 
     debug(data);
-    log.info(`<== Job ended successfully, sending output back`);
+    info(`<== Job ended successfully, sending output back`);
     setImmediate(() => rpc.notify('gearbox\\core::job_data', { id, data, status: 'complete' }));
   } catch (err) {
     let data;
@@ -130,9 +151,9 @@ async function work (jobArgs, { meta: { gearbox_id: id } }) {
       data = err.stack || err.toString();
     }
 
-    log.info(`<== Job failed, sending error back`);
+    info(`<== Job failed, sending error back`);
     setImmediate(() => rpc.notify('gearbox\\core::job_data', { id, data, status: 'errored' }));
   } finally {
-    log.info('=== Took', ms(new Date() - start));
+    info('=== Took', ms(-start.diffNow()));
   }
 }
