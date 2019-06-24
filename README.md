@@ -144,6 +144,8 @@ concurrency = 10
 command = ['php', '-R', '$expr = implode(" ", json_decode($argn)); echo json_encode(eval("return $expr;"))."\n";']
 output = "nl-json"
 concurrency = 1
+log = "/var/log/gearbox/php_eval.log"
+log_output = true
 ```
 
 This defines three methods:
@@ -160,6 +162,7 @@ This defines three methods:
  - `Php::eval` runs `php -R ...` as a direct program call (which is safer)
    with job input passed to the program on STDIN. It interprets the output
    of the command as newline-separated JSON and can only run one at a time.
+   It also writes a full log, including job output, to /var/log/gearbox/...
 
 #### Global options
 
@@ -187,6 +190,10 @@ This defines three methods:
    + `json`: Parsed as JSON (_will throw if malformed!_) and sent back as such.
    + `nl-json`: Each line is parsed as JSON (_will throw!_) and collected in an array.
    + `ignore`: Discarded.
+ - **`log`** (_string_): Logs job events to a file.
+ - **`log_output`** (_boolean_): With `log`, also writes the output of each job
+   to the log, even if `output = ignore`.
+ - **`log_no_time`** (_boolean_): With `log`, don't prepend timestamps to log lines.
  - **`concurrency`** (_unsigned integer_): How many jobs can run in parallel in
    this multiworker instance. (NB. this doesn't control how many jobs can run
    across the entire gearman cluster, nor even for other multiworkers.) If this

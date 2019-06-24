@@ -4,6 +4,7 @@ import { Gearman as Rpc, RpcError } from '../lib/rpc.mjs';
 import gear, { INSTANCE_ID } from '../lib/gear.mjs';
 import log from '../lib/util/log.mjs';
 import { multiworker as debug } from '../lib/util/debug.mjs';
+import { now, logtime } from '../lib/util/time.mjs';
 import ms from 'ms';
 import yargs from 'yargs';
 import child from 'child_process';
@@ -109,8 +110,20 @@ function flatArgs (a) {
   }
 }
 
+function jobLog ({ def, start, info = true }, ...args) {
+  if (info) log.info(...args);
+
+  if (!def.log_no_time) {
+    args.unshift(logtime(start));
+  }
+
+  if (def.log) {
+    fs.appendFile(def.log, args.map(a => `${a}`).join(' ') + '\n').catch(log.crit);
+  }
+}
+
 const RUN = {
-  async command (def, jobArgs) {
+  async command (def, start, jobArgs) {
     const [command, ...args] = def.command;
 
     let finalArgs = [];
@@ -136,11 +149,11 @@ const RUN = {
 
     finalArgs = finalArgs.map(a => `${a}`);
     debug(command, finalArgs);
-    log.info('  $', [command, ...finalArgs].join(' '));
+    jobLog({ def, start }, '  $', [command, ...finalArgs].join(' '));
     const { stdout: data } = await execFile(command, finalArgs, opts);
     return data;
   },
-  async shell (def, jobArgs) {
+  async shell (def, start, jobArgs) {
     const opts = {};
     let finalCmd = def.command;
 
@@ -155,19 +168,20 @@ const RUN = {
     }
 
     debug(finalCmd);
-    log.info('  $', finalCmd);
+    jobLog({ def, start }, '  $', finalCmd);
     const { stdout: data } = await execFile(finalCmd, opts);
     return data;
   }
 };
 
 async function work (rpc, method, def, jobArgs, { meta: { gearbox_id: id } }) {
-  const start = new Date();
+  const start = now();
 
   try {
-    log.info(`==> Starting ${method} job (${id})`);
+    jobLog({ def, start }, `==> Starting ${method} job (${id})`);
     let data = await RUN[def.runner](def, jobArgs);
     debug(data);
+    if (def.log_output) jobLog({ def, start, info: false }, data);
 
     switch (def.output) {
       case 'ignore':
@@ -192,7 +206,7 @@ async function work (rpc, method, def, jobArgs, { meta: { gearbox_id: id } }) {
     }
 
     debug(data);
-    log.info(`<== Job ended successfully, sending output back`);
+    jobLog({ def, start }, `<== Job ended successfully, sending output back`);
     setImmediate(() => rpc.notify('gearbox\\core::job_data', { id, data, status: 'complete' }));
   } catch (err) {
     let data;
@@ -208,10 +222,10 @@ async function work (rpc, method, def, jobArgs, { meta: { gearbox_id: id } }) {
       data = err.stack || err.toString();
     }
 
-    log.info(`<== Job failed, sending error back`);
+    jobLog({ def, start }, `<== Job failed, sending error back`);
     setImmediate(() => rpc.notify('gearbox\\core::job_data', { id, data, status: 'errored' }));
   } finally {
-    log.info('=== Took', ms(new Date() - start));
+    jobLog({ def, start }, '=== Took', ms(-start.diffNow()));
   }
 }
 
