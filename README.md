@@ -335,3 +335,45 @@ Returns current and historical stats about a particular method.
  - **`stdAverageCompletionTime`** (_floating-point number_): Averages normalised without outliers.
  - **`stdAverageRetries`** (_floating-point number_): Averages normalised without outliers.
  - **`states`** (_object_): Count of jobs in each status.
+
+
+### Jobs
+
+The payload a worker gets per job is an RPC request:
+
+```json
+{
+   "jsonrpc": "2.0",
+   "method": "Name\\Space::method",
+   "id": 12345,
+   "_meta": {
+      "gearbox_id": 987
+   },
+   "params": ...
+}
+```
+
+Workers _must_ provide the contents of `params` to the actual job, _may_ do
+some processing to present these more cromulently to the expectant application,
+and _may_ provide the `_meta` contents as an additional argument. They _should
+not_ provide access to the rest of the RPC envelope.
+
+Workers _must_ run the job then answer with an RPC response as `WORK_DATA`, and
+end the job as `WORK_COMPLETE`, regardless of the actual status of the job. The
+RPC `result` field _should_ be `null`. Note that jobs are requests, _not_ RPC
+notifications: the worker _must_ answer.
+
+Workers _may_ send an RPC error back with `WORK_COMPLETE`, but that should be
+reserved for worker failure, i.e. _not_ for application errors.
+
+Workers _may_ end the job as `WORK_ERROR` as a last resort. In that case, the
+payload need not necessarily be formatted as JSON-RPC, and will be assumed an
+error in any case if it is received by gearbox.
+
+```json { "jsonrpc": "2.0", "id": 12345, "result": null } ```
+
+Job data and status _must_ be returned via a gearman background job, with an
+RPC notification payload, to the method `gearbox\core::job_data`, as described
+in its documentation above. Whenever possible, that notification _should_ be
+sent **after** the gearman job is ended (e.g. with `setImmediate` in Node to
+run on next tick).
