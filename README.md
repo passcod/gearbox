@@ -370,7 +370,13 @@ Workers _may_ end the job as `WORK_ERROR` as a last resort. In that case, the
 payload need not necessarily be formatted as JSON-RPC, and will be assumed an
 error in any case if it is received by gearbox.
 
-```json { "jsonrpc": "2.0", "id": 12345, "result": null } ```
+```json
+{
+   "jsonrpc": "2.0",
+   "id": 12345,
+   "result": null
+}
+```
 
 Job data and status _must_ be returned via a gearman background job, with an
 RPC notification payload, to the method `gearbox\core::job_data`, as described
