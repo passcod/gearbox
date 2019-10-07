@@ -9,6 +9,7 @@ dependencies:
   ms: 2.1.2
   mysql2: 1.7.0
   semistandard: 13.0.1
+  uuid: 3.3.3
   yargs: 14.2.0
 lockfileVersion: 5.1
 packages:
@@ -2847,4 +2848,5 @@ specifiers:
   ms: ^2.1.2
   mysql2: ^1.6.5
   semistandard: ^13.0.1
+  uuid: ^3.3.3
   yargs: ^14.2.0
