@@ -10,6 +10,23 @@ ready-made command-line tools to hit the ground running.
 
 [Gearman]: http://gearman.org/
 
+## Good to know
+
+ - Jobs pre-emptively fail if the Gearman function to run them is not available
+   when they’re ready for scheduling. This is in contrast to Gearman, which
+   will queue the job until the function is available.
+
+ - Jobs can depend on other jobs in two different ways: `after` requirements
+   and `before` requirements. A job can only have one of each, but together
+   these two low-level controls compose into useful patterns. Both requirements
+   declare that a job may only run after one or some others have completed:
+   `after` is N:1 (many jobs running after one), `before` is 1:N (one job
+   running only after N others are all done).
+
+ - The special `gearbox\core::noop` method discards all input, returns only `null`,
+   and is always available. It can be used as a meta job for dependency
+   composition, or for testing.
+
 ## Tools
 
 All tools log to the console, and also have [a debug facility][debug]. Generally
@@ -28,12 +45,6 @@ disambiguator is current running, the former is marked as a duplicate of the
 latter, and `watch` queries are redirected transparently.
 
 [debug]: https://www.npmjs.com/package/debug
-
-## Good to know
-
- - Jobs pre-emptively fail if the Gearman function to run them is not available
-   when they’re ready for scheduling. This is in contrast to Gearman, which
-   will queue the job until the function is available.
 
 ### g-core
 
