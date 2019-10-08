@@ -29,6 +29,12 @@ latter, and `watch` queries are redirected transparently.
 
 [debug]: https://www.npmjs.com/package/debug
 
+## Good to know
+
+ - Jobs pre-emptively fail if the Gearman function to run them is not available
+   when they’re ready for scheduling. This is in contrast to Gearman, which
+   will queue the job until the function is available.
+
 ### g-core
 
 The Gearbox daemon. Connects to MySQL, connects to Gearman, and manages the lot.
