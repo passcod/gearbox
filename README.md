@@ -23,9 +23,13 @@ ready-made command-line tools to hit the ground running.
    `after` is N:1 (many jobs running after one), `before` is 1:N (one job
    running only after N others are all done).
 
- - The special `gearbox\core::noop` method discards all input, returns only `null`,
-   and is always available. It can be used as a meta job for dependency
-   composition, or for testing.
+ - There are three special methods under the `gearbox\core` namespace. They
+   discard all input unless specified, return only `null`, and are always
+   available. They act as meta jobs for dependency composition.
+
+   + `::noop` runs immediately as scheduled.
+   + `::noopwait` runs as scheduled but pauses immediately and waits.
+   + `::noopgo` takes the ID of a `::noopwait` job and unpauses it.
 
 ## Tools
 
@@ -282,7 +286,7 @@ Watches a job until it either completes or fails, then returns its result.
 (_mixed_) the job result
 
 
-### `gearbox\core::jobData`
+### `gearbox\core::job_data`
 
 Updates a running job's data, status, or progress. To be used by workers,
 usually as an implementation detail of the worker abstraction (data returned
