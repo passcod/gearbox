@@ -247,8 +247,14 @@ which the job can be watched or managed from then on.
    scheduled before then.
  - **`after_id`** (_unsigned integer_): If provided, the job will not be
    scheduled until the other job described by that ID is complete (that is,
-   successful). Note that this doesn't currently work properly with duplicated
-   jobs (see **disambiguator** description).
+   successful). If the other job fails (errors and cannot be retried anymore),
+   this job will also be marked as failed. Note that this doesn't currently
+   work properly with duplicated jobs (see **disambiguator** description).
+ - **`before_id`** (_unsigned integer_): If provided, the job described by that
+   ID will not be scheduled until this and all other jobs with this `before_id`
+   are complete (that is, successful). If jobs within that “pool” fail, the
+   descendent job will be marked as failed, but only once all jobs within the
+   pool have completed or failed.
  - **`max_retries`** (_unsigned integer_): If provided, the job will be
    automatically retried up to that number of times until it succeeds. Jobs
    marked _invalid_ or _duplicate_ are not retried.
@@ -325,6 +331,7 @@ An array of status objects, like so:
   "status": "running",
   "after_date": null,
   "after_id": null,
+  "before_id": null,
   "completed": null,
   "retries": false,
   "disambiguator": "1984d092-5f6b-4e45-8672-bcc402df2fe4",

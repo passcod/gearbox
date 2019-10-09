@@ -26,6 +26,7 @@ CREATE TABLE gearbox_jobs (
   status gearbox_status NOT NULL DEFAULT 'ready',
   after_date timestamp with time zone DEFAULT NULL,
   after_id integer DEFAULT NULL,
+  before_id integer DEFAULT NULL,
   completed timestamp with time zone DEFAULT NULL,
   retries integer NOT NULL DEFAULT 0,
   max_retries integer NOT NULL DEFAULT 0,
@@ -37,7 +38,8 @@ CREATE TABLE gearbox_jobs (
   retry_delay integer NOT NULL DEFAULT 1,
   see_other integer DEFAULT NULL,
 
-  CONSTRAINT fk_gearbox_jobs_after_id FOREIGN KEY (after_id) REFERENCES gearbox_jobs (id) ON DELETE SET NULL ON UPDATE CASCADE
+  CONSTRAINT fk_gearbox_jobs_after_id FOREIGN KEY (after_id) REFERENCES gearbox_jobs (id) ON DELETE SET NULL ON UPDATE CASCADE,
+  CONSTRAINT fk_gearbox_jobs_before_id FOREIGN KEY (before_id) REFERENCES gearbox_jobs (id) ON DELETE SET NULL ON UPDATE CASCADE
 );
 
 CREATE INDEX status_idx ON gearbox_jobs (status);

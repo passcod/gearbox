@@ -8,6 +8,7 @@ CREATE TABLE `gearbox_jobs` (
   `status` enum('ready','waiting','running','almost-done','errored','complete','invalid','missing','duplicate') COLLATE utf8mb4_bin NOT NULL DEFAULT 'ready',
   `after_date` datetime DEFAULT NULL,
   `after_id` int(10) unsigned DEFAULT NULL,
+  `before_id` int(10) unsigned DEFAULT NULL,
   `completed` datetime DEFAULT NULL,
   `retries` int(10) unsigned NOT NULL DEFAULT '0',
   `max_retries` int(10) unsigned NOT NULL DEFAULT '0',
@@ -23,5 +24,7 @@ CREATE TABLE `gearbox_jobs` (
   KEY `created` (`created`),
   KEY `disambiguator` (`disambiguator`),
   KEY `fk_gearbox_jobs_after_id_idx` (`after_id`),
-  CONSTRAINT `fk_gearbox_jobs_after_id` FOREIGN KEY (`after_id`) REFERENCES `gearbox_jobs` (`id`) ON DELETE SET NULL ON UPDATE CASCADE
+  KEY `fk_gearbox_jobs_before_id_idx` (`before_id`),
+  CONSTRAINT `fk_gearbox_jobs_after_id` FOREIGN KEY (`after_id`) REFERENCES `gearbox_jobs` (`id`) ON DELETE SET NULL ON UPDATE CASCADE,
+  CONSTRAINT `fk_gearbox_jobs_before_id` FOREIGN KEY (`before_id`) REFERENCES `gearbox_jobs` (`id`) ON DELETE SET NULL ON UPDATE CASCADE
 ) DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin;
