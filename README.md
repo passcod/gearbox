@@ -411,3 +411,7 @@ RPC notification payload, to the method `gearbox\core::job_data`, as described
 in its documentation above. Whenever possible, that notification _should_ be
 sent **after** the gearman job is ended (e.g. with `setImmediate` in Node to
 run on next tick).
+
+It’s technically possible to set a job’s data, status, and progress from a
+completely different job, or even another system altogether. Don’t do it.
+Thanks.
