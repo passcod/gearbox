@@ -22,6 +22,13 @@ ready-made command-line tools to hit the ground running.
    declare that a job may only run after one or some others have completed:
    `after` is N:1 (many jobs running after one), `before` is 1:N (one job
    running only after N others are all done).
+   
+ - Coming from Gearman, the `disambiguator` of a job is like the `uniqueid`,
+   except that in the case of scheduled or dependent jobs, two jobs with the
+   same disambiguator can be input so long as they're not scheduled to run
+   immediately, and if one job later becomes schedulable while another with the
+   same disambiguator is current running, the former is marked as a duplicate
+   of the latter, and `watch` queries are redirected transparently.
 
  - There are three special methods under the `gearbox\core` namespace. They
    discard all input unless specified, return only `null`, and are always
@@ -40,13 +47,6 @@ SQL queries can be shown with `DEBUG=knex:query`.
 While methods formally follow the `name\space::method` format, in command-line
 arguments they can be written with forward slashes instead (`name/space::method`)
 for ease of use and to avoid escaping.
-
-Coming from Gearman, the `disambiguator` of a job is like the `uniqueid`, except
-that in the case of scheduled or dependent jobs, two jobs with the same
-disambiguator can be input so long as they're not scheduled to run immediately,
-and if one job later becomes schedulable while another with the same
-disambiguator is current running, the former is marked as a duplicate of the
-latter, and `watch` queries are redirected transparently.
 
 [debug]: https://www.npmjs.com/package/debug
 
