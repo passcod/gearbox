@@ -33,7 +33,7 @@ CREATE TABLE gearbox_jobs (
   progress_status double precision DEFAULT NULL,
   progress_updated timestamp with time zone DEFAULT NULL,
   result_data text,
-  disambiguator text NOT NULL,
+  dedupe text NOT NULL,
   runner_instance text DEFAULT NULL,
   retry_delay integer NOT NULL DEFAULT 1,
   see_other integer DEFAULT NULL,
@@ -44,6 +44,6 @@ CREATE TABLE gearbox_jobs (
 
 CREATE INDEX status_idx ON gearbox_jobs (status);
 CREATE INDEX created_idx ON gearbox_jobs (created);
-CREATE INDEX disambiguator_idx ON gearbox_jobs (disambiguator);
+CREATE INDEX dedupe_idx ON gearbox_jobs (dedupe);
 
 COMMENT ON COLUMN gearbox_jobs.runner_instance 'UUID of the core or agent instance that is currently monitoring the run of this job.\n\nUsed when checking if a running job is still being monitored (e.g. detecting when a core/agent has restarted).';

@@ -19,7 +19,7 @@ function baseRunArgs (yargs) {
   return outputOption(yargs)
     .positional('name', { describe: 'method name' })
     .option('priority', { alias: 'P', describe: 'normal, high, low', default: 'normal' })
-    .option('disambiguator', { alias: 'D', describe: 'identifier that ensures no two jobs with the same one run at the same time' })
+    .option('dedupe', { alias: 'D', describe: 'no two jobs with the same dedupe will run at the same time' })
     .option('after', { describe: 'schedule for after a certain time' })
     .option('after-job', { describe: 'schedule for after a certain job (by id) has completed' })
     .option('before-job', { describe: 'this job must complete before a certain job (by id) can be scheduled' })
@@ -33,7 +33,7 @@ function parseRunArgs (argv) {
   let {
     name,
     priority,
-    disambiguator,
+    dedupe,
     after: after_date,
     'after-job': after_id,
     'before-job': before_id,
@@ -85,7 +85,7 @@ function parseRunArgs (argv) {
     name,
     priority,
     args,
-    disambiguator,
+    dedupe,
     after_date,
     after_id,
     before_id,

@@ -22,13 +22,13 @@ ready-made command-line tools to hit the ground running.
    declare that a job may only run after one or some others have completed:
    `after` is N:1 (many jobs running after one), `before` is 1:N (one job
    running only after N others are all done).
-   
- - Coming from Gearman, the `disambiguator` of a job is like the `uniqueid`,
-   except that in the case of scheduled or dependent jobs, two jobs with the
-   same disambiguator can be input so long as they're not scheduled to run
-   immediately, and if one job later becomes schedulable while another with the
-   same disambiguator is current running, the former is marked as a duplicate
-   of the latter, and `watch` queries are redirected transparently.
+
+ - Coming from Gearman, the `dedupe` of a job is like the `uniqueid`, except
+   that in the case of scheduled or dependent jobs, two jobs with the same
+   dedupe can be input so long as they're not scheduled to run immediately, and
+   if one job later becomes schedulable while another with the same dedupe is
+   current running, the former is marked as a duplicate of the latter, with
+   `watch` queries being redirected transparently.
 
  - There are three special methods under the `gearbox\core` namespace. They
    discard all input unless specified, return only `null`, and are always
@@ -243,17 +243,17 @@ which the job can be watched or managed from then on.
  - **`name`** (_string_): Method name. (required)
  - **`args`** (_any_): Arguments. (required)
  - **`priority`** (_either of `normal`, `high`, `low`_): Priority.
- - **`disambiguator`** (_string_): Arbitrary string that serves to de-duplicate
-   jobs when scheduling. If a job with a disambiguator is running at the time
-   another job with that same disambiguator is getting scheduled, the newer job
-   will immediately be marked as _duplicate_ of the first.
+ - **`dedupe`** (_string_): Arbitrary string that serves to de-duplicate jobs
+   when scheduling. If a job with a dedupe is running at the time another job
+   with that same dedupe is getting scheduled, the newer job will immediately be
+   marked as _duplicate_ of the first.
  - **`after_date`** (_iso8601 string_): If provided, the job will not be
    scheduled before then.
  - **`after_id`** (_unsigned integer_): If provided, the job will not be
    scheduled until the other job described by that ID is complete (that is,
    successful). If the other job fails (errors and cannot be retried anymore),
    this job will also be marked as failed. Note that this doesn't currently
-   work properly with duplicated jobs (see **disambiguator** description).
+   work properly with duplicated jobs (see **dedupe** description).
  - **`before_id`** (_unsigned integer_): If provided, the job described by that
    ID will not be scheduled until this and all other jobs with this `before_id`
    are complete (that is, successful). If jobs within that “pool” fail, the
@@ -338,7 +338,7 @@ An array of status objects, like so:
   "before_id": null,
   "completed": null,
   "retries": false,
-  "disambiguator": "1984d092-5f6b-4e45-8672-bcc402df2fe4",
+  "dedupe": "1984d092-5f6b-4e45-8672-bcc402df2fe4",
   "progress": false,
   "data": null
 }]
