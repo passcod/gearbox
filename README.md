@@ -301,6 +301,9 @@ via Gearman's `WORK_DATA` / JSON-RPC for scheduled jobs is ignored & discarded.)
  - **`progress`** (_floating-point number_): If provided, updates the
    job's progress field. (The number is arbitrary but generally is
    interpreted as a percentage out of 100.)
+ - **`append`** (_boolean_ or _string_): If true or a string, data is appended
+   instead of replacing the previous result. If the value is a string, use that
+   as a separator, otherwise use a newline.
 
 #### Return
 
